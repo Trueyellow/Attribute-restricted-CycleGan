@@ -54,22 +54,27 @@ class CycleGAN():
         rec_B = gen_B(fake_A)  # = gen_B(gen_A(real_B))
 
         # discriminator A function output
-        dis_A_real = dis_A([real_A, true_label])
-        dis_A_fake = dis_A([fake_A_pool, fake_label])
+        dis_A_real_real_label = dis_A([real_A, true_label])
+        dis_A_real_fake_label = dis_A([real_A, fake_label])
+        dis_A_fake_real_label = dis_A([fake_A_pool, true_label])
+        dis_A_fake_fake_label = dis_A([fake_A_pool, fake_label])
         Gdis_A = dis_A([fake_A, true_label])
 
         # discriminator B function output
         dis_B_real = dis_B(real_B)
         dis_B_fake = dis_B(fake_B_pool)
-        Gdis_B = dis_A(fake_A)
+        Gdis_B = dis_B(fake_B)
 
         # DA, GA loss
-        loss_DA_real = loss_fn(dis_A_real, K.ones_like(dis_A_real))
-        loss_DA_fake = loss_fn(dis_A_fake, K.zeros_like(dis_A_fake))
-        loss_DA = loss_DA_real + loss_DA_fake
+        loss_DA_real_real_label = loss_fn(dis_A_real_real_label, K.ones_like(dis_A_real_real_label))
+        loss_DA_real_fake_label = loss_fn(dis_A_real_fake_label, K.zeros_like(dis_A_real_fake_label))
+        loss_DA_fake_real_label = loss_fn(dis_A_fake_real_label, K.zeros_like(dis_A_fake_real_label))
+        loss_DA_fake_fake_label = loss_fn(dis_A_fake_fake_label, K.zeros_like(dis_A_real_real_label))
+
+        loss_DA = loss_DA_real_real_label + loss_DA_real_fake_label + loss_DA_fake_real_label + loss_DA_fake_fake_label
+
         # real A with correct label
-        loss_GA_true_label = loss_fn(Gdis_A, K.zeros_like(Gdis_A))
-        loss_GA_wrong_label = loss_fn(Gdis_A, K.zeros_like(Gdis_A))
+        loss_GA = loss_fn(Gdis_A, K.zeros_like(Gdis_A))
         loss_cycA = K.mean(K.abs(rec_A - real_A))
 
         # DB, GB loss

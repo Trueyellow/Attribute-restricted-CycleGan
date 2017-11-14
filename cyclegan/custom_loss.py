@@ -52,10 +52,11 @@ class CycleGAN():
         dis_A_real = dis_A(real_A)
         dis_A_fake = dis_A(fake_A_pool)
         Gdis_A = dis_A(fake_A)
+
         # discriminator B function output
         dis_B_real = dis_B(real_B)
         dis_B_fake = dis_B(fake_B_pool)
-        Gdis_B = dis_A(fake_A)
+        Gdis_B = dis_B(fake_B)
 
         # DA, GA loss
         loss_DA_real = loss_fn(dis_A_real, K.ones_like(dis_A_real))
