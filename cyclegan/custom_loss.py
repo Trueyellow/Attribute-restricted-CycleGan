@@ -10,7 +10,7 @@ from keras.models import Model
 from .loss_function import loss_fn
 import numpy as np
 import sys
-from .util import vis_grid
+from cyclegan.util import vis_grid
 
 defineG = resnet_6blocks
 defineD = basic_D
@@ -116,9 +116,11 @@ class CycleGAN():
 
         if os.path.exists(os.path.join(opt.pic_dir, 'a2b.h5')):
             self.AtoB.load_weights(os.path.join(opt.pic_dir, 'a2b.h5'))
+            self.disA.load_weights(os.path.join(opt.pic_dir, 'disA.h5'))
 
         if os.path.exists(os.path.join(opt.pic_dir, 'b2a.h5')):
             self.BtoA.load_weights(os.path.join(opt.pic_dir, 'b2a.h5'))
+            self.DisB.save(os.path.join(opt.pic_dir, 'disB.h5'))
 
         while iteration < opt.niter:
             print('iteration: {}'.format(iteration))
@@ -174,7 +176,8 @@ class CycleGAN():
 
                 self.AtoB.save(os.path.join(opt.pic_dir, 'a2b.h5'))
                 self.BtoA.save(os.path.join(opt.pic_dir, 'b2a.h5'))
-
+                self.DisA.save(os.path.join(opt.pic_dir, 'disA.h5'))
+                self.DisB.save(os.path.join(opt.pic_dir, 'disB.h5'))
             # import ipdb
             #               ipdb.set_trace()
             iteration += 1

@@ -4,7 +4,7 @@ from keras.layers import LeakyReLU, BatchNormalization
 from keras.models import Model
 from keras.layers import Conv2D, UpSampling2D
 from keras.layers.merge import Add, concatenate
-from .base_layer import InstanceNormalization, ReflectPadding2D
+from cyclegan.base_layer import InstanceNormalization, ReflectPadding2D
 
 padding = ReflectPadding2D
 

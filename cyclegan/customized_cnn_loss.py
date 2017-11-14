@@ -7,10 +7,10 @@ from .build_DG import basic_D, resnet_6blocks, basic_D_A, resnet_6blocks_A
 from keras.layers import Input
 from keras.optimizers import Adam
 from keras.models import Model
-from .loss_function import loss_fn
+from cyclegan.loss_function import loss_fn
 import numpy as np
 import sys
-from .util import vis_grid
+from cyclegan.util import vis_grid
 
 defineG = resnet_6blocks
 defineD = basic_D
