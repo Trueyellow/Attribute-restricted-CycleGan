@@ -1,34 +1,35 @@
 # Cycle gan based on pytorch version of https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/cycle_gan_model.py
-# TODO: ADD CNN LOSS and BUILD LOSS WITH TRUE OR FALSE LABEL
+#
 
 import os
 import keras.backend as K
-from build_DG import basic_D, resnet_6blocks, basic_D_B, resnet_6blocks_B
+from .build_DG import basic_D, resnet_6blocks, basic_D_A, resnet_6blocks_A
 from keras.layers import Input
 from keras.optimizers import Adam
 from keras.models import Model
-from loss_function import loss_fn
+from .loss_function import loss_fn
 import numpy as np
 import sys
-from util import vis_grid
+from .util import vis_grid
 
 defineG = resnet_6blocks
 defineD = basic_D
-defineG_B = resnet_6blocks_B
-defineD_B = basic_D_B
+defineG_A = resnet_6blocks_A
+defineD_A = basic_D_A
+
 
 class CycleGAN():
     def __init__(self, opt):
 
         gen_B = defineG(opt.shapeA,  opt.shapeB[2], ngf=opt.ngf, name='gen_B')
 
-        dis_B = basic_D_B(opt.shapeB, opt.label_shape, opt.ndf, use_sigmoid=not opt.use_lsgan,
+        dis_B = basic_D(opt.shapeB,  opt.ndf, use_sigmoid=not opt.use_lsgan,
                         name='dis_B')
 
-        gen_A = defineG_B(opt.shapeB, opt.label_shape, opt.shapeB[2], ngf=opt.ngf,
+        gen_A = defineG_A(opt.shapeB, opt.label_shape, opt.shapeB[2], ngf=opt.ngf,
                         name='gen_A')
 
-        dis_A = defineD(opt.shapeA, opt.ndf, use_sigmoid=not opt.use_lsgan,
+        dis_A = defineD_A(opt.shapeA, opt.label_shape, opt.ndf, use_sigmoid=not opt.use_lsgan,
                         name='dis_A')
 
         self.init_network(gen_B)

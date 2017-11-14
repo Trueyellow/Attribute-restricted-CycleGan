@@ -3,14 +3,14 @@
 
 import os
 import keras.backend as K
-from build_DG import basic_D, resnet_6blocks
+from .build_DG import basic_D, resnet_6blocks
 from keras.layers import Input
 from keras.optimizers import Adam
 from keras.models import Model
-from loss_function import loss_fn
+from .loss_function import loss_fn
 import numpy as np
 import sys
-from util import vis_grid
+from .util import vis_grid
 
 defineG = resnet_6blocks
 defineD = basic_D

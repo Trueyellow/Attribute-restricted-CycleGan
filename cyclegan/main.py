@@ -1,8 +1,8 @@
 # main
 import numpy as np
-from custom_loss import CycleGAN
-from parameter_handle import parameter
-from util import ImageGenerator
+from .custom_loss import CycleGAN
+from .parameter_handle import parameter
+from .util import ImageGenerator
 
 if __name__ == '__main__':
     para = parameter()
