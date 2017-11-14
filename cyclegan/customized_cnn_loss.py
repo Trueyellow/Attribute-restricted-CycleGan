@@ -1,5 +1,5 @@
 # Cycle gan based on pytorch version of https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/cycle_gan_model.py
-#
+# TODO: ADD CNN LOSS and BUILD LOSS WITH TRUE OR FALSE LABEL
 
 import os
 import keras.backend as K
