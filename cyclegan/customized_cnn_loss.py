@@ -48,16 +48,15 @@ class CycleGAN():
         fake_A_pool = Input(opt.shapeA)
         fake_B_pool = Input(opt.shapeB)
 
-
         fake_B = gen_B(real_A)
-        rec_A = gen_A(fake_B)  # = gen_A(gen_B(real_A))
-        fake_A = gen_A(real_B)
+        rec_A = gen_A([fake_B, true_label])  # = gen_A(gen_B(real_A))
+        fake_A = gen_A([real_B, true_label])
         rec_B = gen_B(fake_A)  # = gen_B(gen_A(real_B))
 
         # discriminator A function output
-        dis_A_real = dis_A(real_A)
-        dis_A_fake = dis_A(fake_A_pool)
-        Gdis_A = dis_A(fake_A)
+        dis_A_real = dis_A([real_A, true_label])
+        dis_A_fake = dis_A([fake_A_pool, fake_label])
+        Gdis_A = dis_A([fake_A, true_label])
 
         # discriminator B function output
         dis_B_real = dis_B(real_B)
@@ -69,8 +68,8 @@ class CycleGAN():
         loss_DA_fake = loss_fn(dis_A_fake, K.zeros_like(dis_A_fake))
         loss_DA = loss_DA_real + loss_DA_fake
         # real A with correct label
-        loss_GA = loss_fn(Gdis_A, K.zeros_like(Gdis_A))
-        loss_GA_wrong = loss_fn(Gdis_A, K.ones_like(Gdis_A))
+        loss_GA_true_label = loss_fn(Gdis_A, K.zeros_like(Gdis_A))
+        loss_GA_wrong_label = loss_fn(Gdis_A, K.zeros_like(Gdis_A))
         loss_cycA = K.mean(K.abs(rec_A - real_A))
 
         # DB, GB loss
