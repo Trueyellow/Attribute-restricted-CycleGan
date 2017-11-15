@@ -128,6 +128,7 @@ def resnet_6blocks(input_shape, output_nc, ngf, **kwargs):
     model.summary()
     return model
 
+
 # basic resnet 6 blocks generator for A(with label)
 def resnet_6blocks_A(input_shape, label_shape, output_nc, ngf, **kwargs):
     ks = 3
@@ -139,7 +140,7 @@ def resnet_6blocks_A(input_shape, label_shape, output_nc, ngf, **kwargs):
     # local e1 = data - nn.SpatialReflectionPadding(p, p, p, p) - nn.SpatialConvolution(3, ngf, f, f, 1, 1) - normalization(ngf) - nn.ReLU(true)
     x = padding(p)(input)
     x = Conv2D(ngf, (f, f))(x)
-    x_conca = concatenate([x, label])
+    x_conca = concatenate([x, label], axis=-1)
     x = normalize()(x_conca)
     x = Activation('relu')(x)
 
@@ -179,7 +180,7 @@ def resnet_6blocks_A(input_shape, label_shape, output_nc, ngf, **kwargs):
     x = Conv2D(output_nc, (f, f))(x)
     x = Activation('tanh')(x)
 
-    model = Model([input, label], x, name=kwargs.get('name', None))
+    model = Model(inputs=[input, label], outputs=x, name=kwargs.get('name', None))
     print('Model resnet 6blocks:')
     model.summary()
     return model
@@ -190,7 +191,7 @@ def basic_D_A(input_shape, label_shape, ndf, n_layers=3, kw=4, dropout=0.0, use_
     input = Input(input_shape)
     label = Input(label_shape)
     x = Conv2D(ndf, (kw, kw), strides=(2, 2), padding='same')(input)
-    x = concatenate([x, label])
+    x = concatenate([x, label], axis=-1)
     x = LeakyReLU(0.2)(x)
 
     for i in range(n_layers - 1):

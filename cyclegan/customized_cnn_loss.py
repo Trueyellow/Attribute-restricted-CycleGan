@@ -3,7 +3,7 @@
 
 import os
 import keras.backend as K
-from .build_DG import basic_D, resnet_6blocks, basic_D_A, resnet_6blocks_A
+from cyclegan.build_DG import basic_D, resnet_6blocks, basic_D_A, resnet_6blocks_A
 from keras.layers import Input
 from keras.optimizers import Adam
 from keras.models import Model
@@ -47,6 +47,9 @@ class CycleGAN():
         true_label_G = Input(opt.label_shape_G)
         fake_label_D = Input(opt.label_shape_D)
 
+        true_label_D_pool = Input(opt.label_shape_D)
+        fake_label_D_pool = Input(opt.label_shape_D)
+
         # input from fake image pool
         fake_A_pool = Input(opt.shapeA)
         fake_B_pool = Input(opt.shapeB)
@@ -59,8 +62,8 @@ class CycleGAN():
         # discriminator A function output
         dis_A_real_real_label = dis_A([real_A, true_label_D])
         dis_A_real_fake_label = dis_A([real_A, fake_label_D])
-        dis_A_fake_real_label = dis_A([fake_A_pool, true_label_D])
-        dis_A_fake_fake_label = dis_A([fake_A_pool, fake_label_D])
+        dis_A_fake_real_label = dis_A([fake_A_pool, true_label_D_pool])
+        dis_A_fake_fake_label = dis_A([fake_A_pool, fake_label_D_pool])
         Gdis_A = dis_A([fake_A, true_label_D])
 
         # discriminator B function output
@@ -78,14 +81,14 @@ class CycleGAN():
                   loss_DA_fake_image_real_label + loss_DA_fake_image_fake_label
 
         # real A with correct label
-        loss_GA = loss_fn(Gdis_A, K.zeros_like(Gdis_A))
+        loss_GA = loss_fn(Gdis_A, K.ones_like(Gdis_A))
         loss_cycA = K.mean(K.abs(rec_A - real_A))
 
         # DB, GB loss
         loss_DB_real = loss_fn(dis_B_real, K.ones_like(dis_B_real))
         loss_DB_fake = loss_fn(dis_B_fake, K.zeros_like(dis_B_fake))
         loss_DB = loss_DB_real + loss_DB_fake
-        loss_GB = loss_fn(Gdis_B, K.zeros_like(Gdis_B))
+        loss_GB = loss_fn(Gdis_B, K.ones_like(Gdis_B))
         loss_cycB = K.mean(K.abs(rec_B - real_B))
 
         # cycle loss
@@ -103,13 +106,14 @@ class CycleGAN():
         # training function for discriminator
         # update both of D_A, D_B based on the total loss of dis_a, dis_b
         training_updates = Adam(lr=opt.lr_D, beta_1=0.5).get_updates(loss_D, weightsD)
-        netD_train = K.function([real_A, real_B, true_label_D, true_label_G, fake_label_D, fake_A_pool, fake_B_pool],
+        netD_train = K.function([real_A, real_B, true_label_D, true_label_G, fake_label_D, fake_A_pool, fake_B_pool,
+                                 true_label_D_pool, fake_label_D_pool],
                                 [loss_DA / 2, loss_DB / 2], training_updates)
 
         # training function for generator
         # update both of D_A, D_B based on the total loss of GA, GB and CYCLE loss
         training_updates = Adam(lr=opt.lr_G, beta_1=0.5).get_updates(loss_G, weightsG)
-        netG_train = K.function([real_A, real_B, true_label_D], [loss_GA, loss_GB, loss_cyc], training_updates)
+        netG_train = K.function([real_A, real_B, true_label_D, true_label_G], [loss_GA, loss_GB, loss_cyc], training_updates)
 
         self.G_trainner = netG_train
         self.D_trainner = netD_train
@@ -126,43 +130,71 @@ class CycleGAN():
 
         bs = opt.batch_size
 
-        fake_A_pool = []
-        fake_B_pool = []
+        rec_A_pool = []
+        rec_B_pool = []
 
         iteration = 0
 
         if os.path.exists(os.path.join(opt.pic_dir, 'a2b.h5')):
             self.AtoB.load_weights(os.path.join(opt.pic_dir, 'a2b.h5'))
+
+        if os.path.exists(os.path.join(opt.pic_dir, 'disA.h5')):
+            self.DisA.load_weights(os.path.join(opt.pic_dir, 'disA.h5'))
+
+        if os.path.exists(os.path.join(opt.pic_dir, 'b2a.h5')):
             self.BtoA.load_weights(os.path.join(opt.pic_dir, 'b2a.h5'))
+
+        if os.path.exists(os.path.join(opt.pic_dir, 'disB.h5')):
+            self.DisB.save(os.path.join(opt.pic_dir, 'disB.h5'))
 
         while iteration < opt.niter:
             print('iteration: {}'.format(iteration))
             # samples
-            real_A, label_A = img_A_generator(bs, label=True)
-            real_B, label_B = img_B_generator(bs, label=True)
+            real_A, label_A = img_A_generator(bs, return_label=True)
+            real_B = img_B_generator(bs)
 
+            true_label = np.argmax(label_A)
+            fake_label = np.random.choice(np.arange(opt.label_num) - true_label)
+            label_G_true = np.zeros(shape=opt.label_shape_G, dtype=float)
+            label_D_true = np.zeros(shape=opt.label_shape_D, dtype=float)
+            label_D_fake = np.zeros(shape=opt.label_shape_D, dtype=float)
+            label_G_true[:, :, true_label] = 1
+            label_D_true[:, :, true_label] = 1
+            label_D_fake[:, :, fake_label] = 1
+            label_G_true = label_G_true[np.newaxis, :, :, :]
+            label_D_true = label_D_true[np.newaxis, :, :, :]
+            label_D_fake = label_D_fake[np.newaxis, :, :, :]
             # fake pool
-            try:
-                fake_A_pool.extend(self.BtoA.predict(real_B))
-                fake_B_pool.extend(self.AtoB.predict(real_A))
-                fake_A_pool = fake_A_pool[-opt.pool_size:]
-                fake_B_pool = fake_B_pool[-opt.pool_size:]
+            # try:
+            rec_A_pool.append([self.BtoA.predict(x=[real_B, label_G_true]), label_A])
+            rec_B_pool.append(self.AtoB.predict(real_A))
+            rec_A_pool = rec_A_pool[-opt.pool_size:]
+            rec_B_pool = rec_B_pool[-opt.pool_size:]
 
-                fake_A = [fake_A_pool[ind] for ind in np.random.choice(len(fake_A_pool), size=(bs,), replace=False)]
-                fake_B = [fake_B_pool[ind] for ind in np.random.choice(len(fake_B_pool), size=(bs,), replace=False)]
-                fake_A = np.array(fake_A)
-                fake_B = np.array(fake_B)
+            rec_A_select = rec_A_pool[np.random.choice(len(rec_A_pool))]
+            rec_B_select = rec_B_pool[np.random.choice(len(rec_B_pool))]
+            rec_A = np.array(rec_A_select[0])
+            rec_B = np.array(rec_B_select)
+            true_label = np.argmax(rec_A_select[1])
+            fake_label = np.random.choice(np.arange(opt.label_num) - true_label)
 
-                # ones = np.ones((bs,) + self.G_trainner.output_shape[0][1:])
-                # zeros = np.zeros((bs,) + self.G_trainner.output_shape[0][1:])
+            label_D_true_pool = np.zeros(shape=opt.label_shape_D, dtype=float)
+            label_D_true_pool[:, :, true_label] = 1
+            label_D_true_pool = label_D_true_pool[np.newaxis, :, :, :]
 
-                # train
-                for _ in range(opt.d_iter):
-                    errDA, errDB = self.D_trainner([real_A, real_B, fake_A, fake_B])
+            label_D_fake_pool = np.zeros(shape=opt.label_shape_D, dtype=float)
+            label_D_fake_pool[:, :, fake_label] = 1
+            label_D_fake_pool = label_D_fake_pool[np.newaxis, :, :, :]
 
-                errGA, errGB, errCyc = self.G_trainner([real_A, real_B])
-            except:
-                continue
+            # train
+            for _ in range(opt.d_iter):
+                errDA, errDB = self.D_trainner([real_A, real_B, label_D_true, label_G_true, label_D_fake,
+                                                rec_A, rec_B, label_D_true_pool, label_D_fake_pool])
+
+
+            errGA, errGB, errCyc = self.G_trainner([real_A, real_B, label_D_true, label_G_true])
+            # except:
+            #     continue
 
             print('Generator Loss:')
             print('GA: {}  | GB: {} || G_cycle: {}\n'.format(np.mean(errGA), np.mean(errGB), errCyc))
@@ -171,31 +203,35 @@ class CycleGAN():
             print('D_A: {} | D_B: {}\n'.format(np.mean(errDA), np.mean(errDB)))
 
             print("Dis_A")
-            res = self.DisA.predict(real_A)
-            print("real_A: {}".format(res.mean()))
-            res = self.DisA.predict(fake_A)
-            print("fake_A: {}\n\n".format(res.mean()))
+            res = self.DisA.predict([real_A, label_D_true])
+            print("real_A_true_label: {}".format(res.mean()))
+            res = self.DisA.predict([real_A, label_D_fake])
+            print("real_A_false_label: {}".format(res.mean()))
+
+            res = self.DisA.predict([rec_A, label_D_true_pool])
+            print("rec_A_true_label: {}".format(res.mean()))
+
+            res = self.DisA.predict([rec_A, label_D_fake_pool])
+            print("rec_A_false_label: {}\n\n".format(res.mean()))
 
             if iteration % opt.save_iter == 0:
                 imga = real_A
                 imga2b = self.AtoB.predict(imga)
-                imga2b2a = self.BtoA.predict(imga2b)
+                imga2b2a = self.BtoA.predict([imga2b, label_G_true])
 
                 imgb = real_B
-                imgb2a = self.BtoA.predict(imgb)
+                imgb2a = self.BtoA.predict([imgb, label_G_true])
                 imgb2a2b = self.AtoB.predict(imgb2a)
 
                 vis_grid(np.concatenate([imga, imga2b, imga2b2a, imgb, imgb2a, imgb2a2b],
                                         axis=0),
-                         6, bs, os.path.join(opt.pic_dir, '{}.png'.format(iteration)))
+                         6, bs, os.path.join(opt.pic_dir, '{}_{}.png'.format(iteration, true_label)))
 
                 self.AtoB.save(os.path.join(opt.pic_dir, 'a2b.h5'))
                 self.BtoA.save(os.path.join(opt.pic_dir, 'b2a.h5'))
-
-            # import ipdb
-            #               ipdb.set_trace()
+                self.DisA.save(os.path.join(opt.pic_dir, 'disA.h5'))
+                self.DisB.save(os.path.join(opt.pic_dir, 'disB.h5'))
             iteration += 1
-            sys.stdout.flush()
 
     @staticmethod
     def init_network(model):
