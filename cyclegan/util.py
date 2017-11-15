@@ -28,14 +28,17 @@ class ImageGenerator(object):
 
         print('ImageGenerator from {} [{}]'.format(root, len(self.img_list)))
 
-    def __call__(self, bs):
+    def __call__(self, bs, label=False):
         while True:
             try:
                 imgs = []
+                labels = []
                 for _ in range(bs):
                     img = imread(os.path.join(self.root, np.random.choice(self.img_list)))
                     print(os.path.join(self.root, np.random.choice(self.img_list)))
-                    if self.resize: img = imresize(img, self.resize)
+                    label = self.img_list.split("-")[0]
+                    if self.resize:
+                        img = imresize(img, self.resize)
                     if self.crop:
                         left = np.random.randint(0, img.shape[0]-self.crop[0])
                         top  = np.random.randint(0, img.shape[1]-self.crop[1])
@@ -43,11 +46,15 @@ class ImageGenerator(object):
                     if self.flip:
                         if np.random.random() > 0.5:
                             img = img[:, ::-1, :]
-
+                    labels.append(label)
                     imgs.append(img)
 
                 imgs = np.array(imgs)
                 imgs = imgs/127.5-1
-                return imgs
+
+                if label:
+                    return imgs, np.array(label)
+                else:
+                    return imgs
             except:
                 pass

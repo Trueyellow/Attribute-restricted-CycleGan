@@ -21,16 +21,16 @@ defineD_A = basic_D_A
 class CycleGAN():
     def __init__(self, opt):
 
-        gen_B = defineG(opt.shapeA,  opt.shapeB[2], ngf=opt.ngf, name='gen_B')
+        gen_B = defineG(opt.shapeA, opt.shapeB[2], ngf=opt.ngf, name='gen_B')
 
-        dis_B = basic_D(opt.shapeB,  opt.ndf, use_sigmoid=not opt.use_lsgan,
+        dis_B = basic_D(opt.shapeB, opt.ndf, use_sigmoid=not opt.use_lsgan,
                         name='dis_B')
 
-        gen_A = defineG_A(opt.shapeB, opt.label_shape, opt.shapeB[2], ngf=opt.ngf,
-                        name='gen_A')
+        gen_A = defineG_A(opt.shapeB, opt.label_shape_G, opt.shapeB[2], ngf=opt.ngf,
+                          name='gen_A')
 
-        dis_A = defineD_A(opt.shapeA, opt.label_shape, opt.ndf, use_sigmoid=not opt.use_lsgan,
-                        name='dis_A')
+        dis_A = defineD_A(opt.shapeA, opt.label_shape_D, opt.ndf, use_sigmoid=not opt.use_lsgan,
+                          name='dis_A')
 
         self.init_network(gen_B)
         self.init_network(dis_B)
@@ -42,23 +42,26 @@ class CycleGAN():
         # real image input
         real_A = Input(opt.shapeA)
         real_B = Input(opt.shapeB)
-        true_label = Input(opt.label_shape)
-        fake_label = Input(opt.label_shape)
+
+        true_label_D = Input(opt.label_shape_D)
+        true_label_G = Input(opt.label_shape_G)
+        fake_label_D = Input(opt.label_shape_D)
+
         # input from fake image pool
         fake_A_pool = Input(opt.shapeA)
         fake_B_pool = Input(opt.shapeB)
 
         fake_B = gen_B(real_A)
-        rec_A = gen_A([fake_B, true_label])  # = gen_A(gen_B(real_A))
-        fake_A = gen_A([real_B, true_label])
+        rec_A = gen_A([fake_B, true_label_G])  # = gen_A(gen_B(real_A))
+        fake_A = gen_A([real_B, true_label_G])
         rec_B = gen_B(fake_A)  # = gen_B(gen_A(real_B))
 
         # discriminator A function output
-        dis_A_real_real_label = dis_A([real_A, true_label])
-        dis_A_real_fake_label = dis_A([real_A, fake_label])
-        dis_A_fake_real_label = dis_A([fake_A_pool, true_label])
-        dis_A_fake_fake_label = dis_A([fake_A_pool, fake_label])
-        Gdis_A = dis_A([fake_A, true_label])
+        dis_A_real_real_label = dis_A([real_A, true_label_D])
+        dis_A_real_fake_label = dis_A([real_A, fake_label_D])
+        dis_A_fake_real_label = dis_A([fake_A_pool, true_label_D])
+        dis_A_fake_fake_label = dis_A([fake_A_pool, fake_label_D])
+        Gdis_A = dis_A([fake_A, true_label_D])
 
         # discriminator B function output
         dis_B_real = dis_B(real_B)
@@ -66,12 +69,13 @@ class CycleGAN():
         Gdis_B = dis_B(fake_B)
 
         # DA, GA loss
-        loss_DA_real_real_label = loss_fn(dis_A_real_real_label, K.ones_like(dis_A_real_real_label))
-        loss_DA_real_fake_label = loss_fn(dis_A_real_fake_label, K.zeros_like(dis_A_real_fake_label))
-        loss_DA_fake_real_label = loss_fn(dis_A_fake_real_label, K.zeros_like(dis_A_fake_real_label))
-        loss_DA_fake_fake_label = loss_fn(dis_A_fake_fake_label, K.zeros_like(dis_A_real_real_label))
+        loss_DA_real_image_real_label = loss_fn(dis_A_real_real_label, K.ones_like(dis_A_real_real_label))
+        loss_DA_real_image_fake_label = loss_fn(dis_A_real_fake_label, K.zeros_like(dis_A_real_fake_label))
+        loss_DA_fake_image_real_label = loss_fn(dis_A_fake_real_label, K.zeros_like(dis_A_fake_real_label))
+        loss_DA_fake_image_fake_label = loss_fn(dis_A_fake_fake_label, K.zeros_like(dis_A_real_real_label))
 
-        loss_DA = loss_DA_real_real_label + loss_DA_real_fake_label + loss_DA_fake_real_label + loss_DA_fake_fake_label
+        loss_DA = loss_DA_real_image_real_label + loss_DA_real_image_fake_label + \
+                  loss_DA_fake_image_real_label + loss_DA_fake_image_fake_label
 
         # real A with correct label
         loss_GA = loss_fn(Gdis_A, K.zeros_like(Gdis_A))
@@ -99,12 +103,13 @@ class CycleGAN():
         # training function for discriminator
         # update both of D_A, D_B based on the total loss of dis_a, dis_b
         training_updates = Adam(lr=opt.lr_D, beta_1=0.5).get_updates(loss_D, weightsD)
-        netD_train = K.function([real_A, real_B, fake_A_pool, fake_B_pool], [loss_DA / 2, loss_DB / 2], training_updates)
+        netD_train = K.function([real_A, real_B, true_label_D, true_label_G, fake_label_D, fake_A_pool, fake_B_pool],
+                                [loss_DA / 2, loss_DB / 2], training_updates)
 
         # training function for generator
         # update both of D_A, D_B based on the total loss of GA, GB and CYCLE loss
         training_updates = Adam(lr=opt.lr_G, beta_1=0.5).get_updates(loss_G, weightsG)
-        netG_train = K.function([real_A, real_B], [loss_GA, loss_GB, loss_cyc], training_updates)
+        netG_train = K.function([real_A, real_B, true_label_D], [loss_GA, loss_GB, loss_cyc], training_updates)
 
         self.G_trainner = netG_train
         self.D_trainner = netD_train
@@ -158,7 +163,6 @@ class CycleGAN():
                 errGA, errGB, errCyc = self.G_trainner([real_A, real_B])
             except:
                 continue
-
 
             print('Generator Loss:')
             print('GA: {}  | GB: {} || G_cycle: {}\n'.format(np.mean(errGA), np.mean(errGB), errCyc))

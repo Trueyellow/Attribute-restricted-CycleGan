@@ -9,7 +9,8 @@ class parameter(object):
                  shapeA=(128, 128, 3),
                  shapeB=(128, 128, 3),
                  label_num=8,
-                 label_shape=(128, 128, 8),
+                 label_shape_G=(128, 128, 8),
+                 label_shape_D=(64, 64, 8),
                  resize=(143, 143),  # scale images to this size
                  crop=(128, 128),  # then crop to this size
                  # net definition
