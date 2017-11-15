@@ -137,9 +137,9 @@ class CycleGAN():
 
         while iteration < opt.niter:
             print('iteration: {}'.format(iteration))
-            # sample
-            real_A = img_A_generator(bs)
-            real_B = img_B_generator(bs)
+            # samples
+            real_A, label_A = img_A_generator(bs, label=True)
+            real_B, label_B = img_B_generator(bs, label=True)
 
             # fake pool
             try:
