@@ -1,14 +1,14 @@
 # keras version of https://github.ckom/junyanz/CycleGAN/models/cycle_gan_model.lua
 
 import os
-from cyclegan.base_layer import basic_D
-from cyclegan.base_layer import resnet_6blocks
+from build_DG import basic_D
+from build_DG import resnet_6blocks
 from keras.layers import Input
 from keras.optimizers import Adam
 from keras.models import Model
 import numpy as np
 import sys
-from cyclegan.util import vis_grid
+from util import vis_grid
 
 defineG = resnet_6blocks
 defineD = basic_D
