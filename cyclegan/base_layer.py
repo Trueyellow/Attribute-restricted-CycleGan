@@ -9,7 +9,6 @@ from keras.engine import Layer, InputSpec
 from keras import initializers, regularizers, constraints
 
 
-
 class ReflectPadding2D(Layer):
     """Reflection-padding layer for 2D input (e.g. picture).
     This layer adds rows and columns of reflected versions of the input at the

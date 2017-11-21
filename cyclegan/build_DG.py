@@ -4,7 +4,7 @@ from keras.layers import LeakyReLU, BatchNormalization
 from keras.models import Model
 from keras.layers import Conv2D, UpSampling2D
 from keras.layers.merge import Add, concatenate
-from cyclegan.base_layer import InstanceNormalization, ReflectPadding2D
+from base_layer import InstanceNormalization, ReflectPadding2D
 
 padding = ReflectPadding2D
 
@@ -184,6 +184,7 @@ def resnet_6blocks_A(input_shape, label_shape, output_nc, ngf, **kwargs):
     print('Model resnet 6blocks:')
     model.summary()
     return model
+
 
 # basic discriminator for A(with label)
 def basic_D_A(input_shape, label_shape, ndf, n_layers=3, kw=4, dropout=0.0, use_sigmoid=False, **kwargs):

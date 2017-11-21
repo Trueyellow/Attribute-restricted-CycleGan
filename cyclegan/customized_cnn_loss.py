@@ -3,14 +3,14 @@
 
 import os
 import keras.backend as K
-from cyclegan.build_DG import basic_D, resnet_6blocks, basic_D_A, resnet_6blocks_A
+from build_DG import basic_D, resnet_6blocks, basic_D_A, resnet_6blocks_A
 from keras.layers import Input
 from keras.optimizers import Adam
 from keras.models import Model
-from cyclegan.loss_function import loss_fn
+from loss_function import loss_fn
 import numpy as np
 import sys
-from cyclegan.util import vis_grid
+from util import vis_grid, label_generate
 
 defineG = resnet_6blocks
 defineD = basic_D
@@ -105,14 +105,14 @@ class CycleGAN():
 
         # training function for discriminator
         # update both of D_A, D_B based on the total loss of dis_a, dis_b
-        training_updates = Adam(lr=opt.lr_D, beta_1=0.5).get_updates(loss_D, weightsD)
+        training_updates = Adam(lr=opt.lr_D, beta_1=0.5).get_updates( weightsD, [],loss_D)
         netD_train = K.function([real_A, real_B, true_label_D, true_label_G, fake_label_D, fake_A_pool, fake_B_pool,
                                  true_label_D_pool, fake_label_D_pool],
                                 [loss_DA / 2, loss_DB / 2], training_updates)
 
         # training function for generator
         # update both of D_A, D_B based on the total loss of GA, GB and CYCLE loss
-        training_updates = Adam(lr=opt.lr_G, beta_1=0.5).get_updates(loss_G, weightsG)
+        training_updates = Adam(lr=opt.lr_G, beta_1=0.5).get_updates( weightsG, [], loss_G)
         netG_train = K.function([real_A, real_B, true_label_D, true_label_G], [loss_GA, loss_GB, loss_cyc], training_updates)
 
         self.G_trainner = netG_train
@@ -153,17 +153,9 @@ class CycleGAN():
             real_A, label_A = img_A_generator(bs, return_label=True)
             real_B = img_B_generator(bs)
 
-            true_label = np.argmax(label_A)
-            fake_label = np.random.choice(np.arange(opt.label_num) - true_label)
-            label_G_true = np.zeros(shape=opt.label_shape_G, dtype=float)
-            label_D_true = np.zeros(shape=opt.label_shape_D, dtype=float)
-            label_D_fake = np.zeros(shape=opt.label_shape_D, dtype=float)
-            label_G_true[:, :, true_label] = 1
-            label_D_true[:, :, true_label] = 1
-            label_D_fake[:, :, fake_label] = 1
-            label_G_true = label_G_true[np.newaxis, :, :, :]
-            label_D_true = label_D_true[np.newaxis, :, :, :]
-            label_D_fake = label_D_fake[np.newaxis, :, :, :]
+            true_label = label_A
+            label_G_true, label_D_true, label_D_fake = label_generate(true_label, opt.label_num, opt.label_shape_G, opt.label_shape_D)
+
             # fake pool
             # try:
             rec_A_pool.append([self.BtoA.predict(x=[real_B, label_G_true]), label_A])
@@ -175,16 +167,10 @@ class CycleGAN():
             rec_B_select = rec_B_pool[np.random.choice(len(rec_B_pool))]
             rec_A = np.array(rec_A_select[0])
             rec_B = np.array(rec_B_select)
-            true_label = np.argmax(rec_A_select[1])
-            fake_label = np.random.choice(np.arange(opt.label_num) - true_label)
+            true_label = rec_A_select[1]
 
-            label_D_true_pool = np.zeros(shape=opt.label_shape_D, dtype=float)
-            label_D_true_pool[:, :, true_label] = 1
-            label_D_true_pool = label_D_true_pool[np.newaxis, :, :, :]
-
-            label_D_fake_pool = np.zeros(shape=opt.label_shape_D, dtype=float)
-            label_D_fake_pool[:, :, fake_label] = 1
-            label_D_fake_pool = label_D_fake_pool[np.newaxis, :, :, :]
+            _, label_D_true_pool, label_D_fake_pool = label_generate(true_label, opt.label_num, opt.label_shape_G,
+                                                                      opt.label_shape_D)
 
             # train
             for _ in range(opt.d_iter):
@@ -223,9 +209,8 @@ class CycleGAN():
                 imgb2a = self.BtoA.predict([imgb, label_G_true])
                 imgb2a2b = self.AtoB.predict(imgb2a)
 
-                vis_grid(np.concatenate([imga, imga2b, imga2b2a, imgb, imgb2a, imgb2a2b],
-                                        axis=0),
-                         6, bs, os.path.join(opt.pic_dir, '{}_{}.png'.format(iteration, true_label)))
+                vis_grid(np.concatenate([imga, imga2b, imga2b2a, imgb, imgb2a, imgb2a2b], axis=0),
+                         6, bs, os.path.join(opt.pic_dir, '{}_{}.png'.format(iteration, label_A)))
 
                 self.AtoB.save(os.path.join(opt.pic_dir, 'a2b.h5'))
                 self.BtoA.save(os.path.join(opt.pic_dir, 'b2a.h5'))

@@ -2,6 +2,22 @@ import os
 import numpy as np
 from scipy.misc import imsave, imread, imresize
 
+
+def label_generate(label, label_num, label_shape_G, label_shape_D):
+    true_label = label
+    fake_label = np.random.choice(np.delete(np.arange(label_num), true_label, axis=0))
+    label_G_true = np.zeros(shape=label_shape_G, dtype=float)
+    label_D_true = np.zeros(shape=label_shape_D, dtype=float)
+    label_D_fake = np.zeros(shape=label_shape_D, dtype=float)
+    label_G_true[:, :, true_label] = 1
+    label_D_true[:, :, true_label] = 1
+    label_D_fake[:, :, fake_label] = 1
+    label_G_true = label_G_true[np.newaxis, :, :, :]
+    label_D_true = label_D_true[np.newaxis, :, :, :]
+    label_D_fake = label_D_fake[np.newaxis, :, :, :]
+    return label_G_true, label_D_true, label_D_fake
+
+
 # for data visualization and save data
 def vis_grid(X, nh, nw, save_path=None):
 
