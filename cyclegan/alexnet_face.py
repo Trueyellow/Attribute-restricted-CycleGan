@@ -1,7 +1,7 @@
 import keras.backend as K
 import os
 from keras.layers import Activation, Input, Dropout, Conv2D, UpSampling2D, MaxPool2D
-from keras.layers import LeakyReLU, BatchNormalization, Dense
+from keras.layers import LeakyReLU, BatchNormalization, Dense, Flatten
 from keras.models import Model, Sequential, optimizers
 from keras.preprocessing.image import ImageDataGenerator
 
@@ -15,11 +15,16 @@ EPOCH = 100  # epoch * 2 is correct
 
 def face_model():
     model = Sequential()
-    model.add(Conv2D(32, kernel_size=(7, 7), strides=(2, 2),
+    model.add(Conv2D(64, kernel_size=(7, 7), strides=(2, 2),
                                      activation='relu', padding='same', input_shape=(256, 256, 3)))
     model.add(BatchNormalization())
+    model.add(MaxPool2D(pool_size=(3, 3), strides=(2, 2)))
 
-    model.add(Conv2D(64, kernel_size=(3, 3), activation='relu', padding='same'))
+    model.add(Conv2D(128, kernel_size=(3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.6))
+
+    model.add(Conv2D(128, kernel_size=(3, 3), activation='relu', padding='same'))
     model.add(BatchNormalization())
     model.add(Dropout(0.6))
     model.add(MaxPool2D(pool_size=(2, 2), strides=(2, 2)))
@@ -32,7 +37,13 @@ def face_model():
     model.add(Conv2D(256, kernel_size=(3, 3), activation='relu', padding='same'))
     model.add(BatchNormalization())
     model.add(Dropout(0.6))
+    model.add(MaxPool2D(pool_size=(2, 2), strides=(2, 2)))
+
+    model.add(Conv2D(128, kernel_size=(3, 3), activation='relu', padding='same'))
+    model.add(BatchNormalization())
+    model.add(Dropout(0.6))
     model.add(MaxPool2D(pool_size=(3, 3), strides=(2, 2)))
+    model.add(Flatten())
     model.add(Dense(2048))
     model.add(Dropout(0.6))
     model.add(Dense(512))
@@ -85,4 +96,6 @@ def training(model, LR):
                 validation_steps=50)
         model.save_weights(SAVED_WEIGHT_NAME)
 
-training(face_model(), LR)
+model = face_model()
+model.summary()
+training(model, LR)
