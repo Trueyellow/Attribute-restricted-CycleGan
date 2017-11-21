@@ -18,17 +18,14 @@ defineG_A = resnet_6blocks_A
 defineD_A = basic_D_A
 
 
-class CycleGAN():
+class CycleGAN(object):
+
     def __init__(self, opt):
-
         gen_B = defineG(opt.shapeA, opt.shapeB[2], ngf=opt.ngf, name='gen_B')
-
         dis_B = basic_D(opt.shapeB, opt.ndf, use_sigmoid=not opt.use_lsgan,
                         name='dis_B')
-
         gen_A = defineG_A(opt.shapeB, opt.label_shape_G, opt.shapeB[2], ngf=opt.ngf,
                           name='gen_A')
-
         dis_A = defineD_A(opt.shapeA, opt.label_shape_D, opt.ndf, use_sigmoid=not opt.use_lsgan,
                           name='dis_A')
 
@@ -125,6 +122,7 @@ class CycleGAN():
 
     def fit(self, img_A_generator, img_B_generator):
         opt = self.opt
+
         if not os.path.exists(opt.pic_dir):
             os.mkdir(opt.pic_dir)
 
@@ -135,17 +133,7 @@ class CycleGAN():
 
         iteration = 0
 
-        if os.path.exists(os.path.join(opt.pic_dir, 'a2b.h5')):
-            self.AtoB.load_weights(os.path.join(opt.pic_dir, 'a2b.h5'))
-
-        if os.path.exists(os.path.join(opt.pic_dir, 'disA.h5')):
-            self.DisA.load_weights(os.path.join(opt.pic_dir, 'disA.h5'))
-
-        if os.path.exists(os.path.join(opt.pic_dir, 'b2a.h5')):
-            self.BtoA.load_weights(os.path.join(opt.pic_dir, 'b2a.h5'))
-
-        if os.path.exists(os.path.join(opt.pic_dir, 'disB.h5')):
-            self.DisB.save(os.path.join(opt.pic_dir, 'disB.h5'))
+        self.load_saved_model(opt)
 
         while iteration < opt.niter:
             print('iteration: {}'.format(iteration))
@@ -154,10 +142,11 @@ class CycleGAN():
             real_B = img_B_generator(bs)
 
             true_label = label_A
+
             label_G_true, label_D_true, label_D_fake = label_generate(true_label, opt.label_num, opt.label_shape_G, opt.label_shape_D)
 
             # fake pool
-            # try:
+            # saved with true label
             rec_A_pool.append([self.BtoA.predict(x=[real_B, label_G_true]), label_A])
             rec_B_pool.append(self.AtoB.predict(real_A))
             rec_A_pool = rec_A_pool[-opt.pool_size:]
@@ -172,15 +161,12 @@ class CycleGAN():
             _, label_D_true_pool, label_D_fake_pool = label_generate(true_label, opt.label_num, opt.label_shape_G,
                                                                       opt.label_shape_D)
 
-            # train
+            # train D
             for _ in range(opt.d_iter):
                 errDA, errDB = self.D_trainner([real_A, real_B, label_D_true, label_G_true, label_D_fake,
                                                 rec_A, rec_B, label_D_true_pool, label_D_fake_pool])
-
-
+            # train G
             errGA, errGB, errCyc = self.G_trainner([real_A, real_B, label_D_true, label_G_true])
-            # except:
-            #     continue
 
             print('Generator Loss:')
             print('GA: {}  | GB: {} || G_cycle: {}\n'.format(np.mean(errGA), np.mean(errGB), errCyc))
@@ -188,19 +174,19 @@ class CycleGAN():
             print('Discriminator Loss:')
             print('D_A: {} | D_B: {}\n'.format(np.mean(errDA), np.mean(errDB)))
 
-            print("Dis_A")
-            res = self.DisA.predict([real_A, label_D_true])
-            print("real_A_true_label: {}".format(res.mean()))
-            res = self.DisA.predict([real_A, label_D_fake])
-            print("real_A_false_label: {}".format(res.mean()))
-
-            res = self.DisA.predict([rec_A, label_D_true_pool])
-            print("rec_A_true_label: {}".format(res.mean()))
-
-            res = self.DisA.predict([rec_A, label_D_fake_pool])
-            print("rec_A_false_label: {}\n\n".format(res.mean()))
-
             if iteration % opt.save_iter == 0:
+                print("Dis_A")
+                res = self.DisA.predict([real_A, label_D_true])
+                print("real_A_true_label: {}".format(res.mean()))
+                res = self.DisA.predict([real_A, label_D_fake])
+                print("real_A_false_label: {}".format(res.mean()))
+
+                res = self.DisA.predict([rec_A, label_D_true_pool])
+                print("rec_A_true_label: {}".format(res.mean()))
+
+                res = self.DisA.predict([rec_A, label_D_fake_pool])
+                print("rec_A_false_label: {}\n\n".format(res.mean()))
+
                 imga = real_A
                 imga2b = self.AtoB.predict(imga)
                 imga2b2a = self.BtoA.predict([imga2b, label_G_true])
@@ -212,11 +198,28 @@ class CycleGAN():
                 vis_grid(np.concatenate([imga, imga2b, imga2b2a, imgb, imgb2a, imgb2a2b], axis=0),
                          6, bs, os.path.join(opt.pic_dir, '{}_{}.png'.format(iteration, label_A)))
 
-                self.AtoB.save(os.path.join(opt.pic_dir, 'a2b.h5'))
-                self.BtoA.save(os.path.join(opt.pic_dir, 'b2a.h5'))
-                self.DisA.save(os.path.join(opt.pic_dir, 'disA.h5'))
-                self.DisB.save(os.path.join(opt.pic_dir, 'disB.h5'))
+                self.save_model(opt)
+
             iteration += 1
+
+    def load_saved_model(self, opt):
+        if os.path.exists(os.path.join(opt.pic_dir, 'a2b.h5')):
+            self.AtoB.load_weights(os.path.join(opt.pic_dir, 'a2b.h5'))
+
+        if os.path.exists(os.path.join(opt.pic_dir, 'disA.h5')):
+            self.DisA.load_weights(os.path.join(opt.pic_dir, 'disA.h5'))
+
+        if os.path.exists(os.path.join(opt.pic_dir, 'b2a.h5')):
+            self.BtoA.load_weights(os.path.join(opt.pic_dir, 'b2a.h5'))
+
+        if os.path.exists(os.path.join(opt.pic_dir, 'disB.h5')):
+            self.DisB.save(os.path.join(opt.pic_dir, 'disB.h5'))
+
+    def save_model(self, opt):
+        self.AtoB.save(os.path.join(opt.pic_dir, 'a2b.h5'))
+        self.BtoA.save(os.path.join(opt.pic_dir, 'b2a.h5'))
+        self.DisA.save(os.path.join(opt.pic_dir, 'disA.h5'))
+        self.DisB.save(os.path.join(opt.pic_dir, 'disB.h5'))
 
     @staticmethod
     def init_network(model):
@@ -227,3 +230,4 @@ class CycleGAN():
             if w.name.startswith('conv2d') and w.name.endswith('bias'):
                 value = np.zeros(w.get_value().shape)
                 w.set_value(value.astype('float32'))
+
