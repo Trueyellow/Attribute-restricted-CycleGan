@@ -1,3 +1,4 @@
+# Pattern Recognition final project Group 8 Kaixiang Huang
 # class for parameter handling
 import numpy as np
 from pprint import pprint

@@ -1,8 +1,10 @@
+# Pattern Recognition final project Group 8 Kaixiang Huang
+# ReflectPadding layer and Instance Normalization layer for building generator and discriminator
+
 import keras.backend as K
 from keras.utils import conv_utils
 from keras.engine import Layer, InputSpec
 from keras import initializers, regularizers, constraints
-
 
 
 class ReflectPadding2D(Layer):

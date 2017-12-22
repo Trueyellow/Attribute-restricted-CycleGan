@@ -1,9 +1,10 @@
-import keras.backend as K
+# Pattern Recognition final project Group 8 Kaixiang Huang
+# support function for cycleGAN
 
+import keras.backend as K
 
 def loss_fn(input, target):
     return K.mean(K.square(input + 1e-12 - target), axis=-1)
-
 
 def cycle_variables(netG1, netG2):
     real_input = netG1.inputs[0]

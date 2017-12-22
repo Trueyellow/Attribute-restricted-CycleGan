@@ -1,3 +1,6 @@
+# Pattern Recognition final project Group 8 Kaixiang Huang
+# pretrained cnn for our teammate
+
 import os
 from keras.layers import Dropout, Conv2D, MaxPool2D
 from keras.layers import BatchNormalization, Dense, Flatten

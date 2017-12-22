@@ -1,3 +1,6 @@
+# Pattern Recognition final project Group 8 Kaixiang Huang
+# For generating DEMO images
+
 import cv2
 from build_DG import resnet_6blocks_A
 import numpy as np

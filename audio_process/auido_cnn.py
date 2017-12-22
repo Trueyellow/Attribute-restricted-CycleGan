@@ -1,24 +1,12 @@
-import random
+# Pattern Recognition final project Group 8 Yehan Wang
+# Audio feature extractor
 import numpy as np
-from collections import deque
 import scipy.io as sio
-import json
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation, Flatten
-from keras.layers import LSTM, Conv2D, MaxPool2D, TimeDistributed, Merge, Input, UpSampling2D, multiply, add, \
-    concatenate, BatchNormalization, AvgPool2D
-from keras.optimizers import SGD, Adam
-import tensorflow as tf
-from keras import backend as K
-from keras.models import Model
 import os
-from keras import layers
-import cv2
+from keras.layers.core import Dense, Dropout, Flatten
+from keras.layers import Conv2D, MaxPool2D, Input, BatchNormalization
+from keras.models import Model
 from random import shuffle
-from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, precision_score
-import matplotlib.pyplot as plt
-from keras.applications import VGG16
-import glob
 from keras.utils import np_utils
 from keras import optimizers
 
@@ -107,10 +95,6 @@ def build_model():
     conv4_au = Conv2D(256, (3, 3), activation='relu', padding='same')(pool3_au)
     batch3 = BatchNormalization()(conv4_au)
     pool4_au = MaxPool2D(pool_size=(2, 2))(batch3)
-    #
-    # conv5_au = Conv2D(128, (3, 3), activation='relu', padding='same')(pool4_au)
-    # pool5_au = MaxPool2D(pool_size=(2, 2))(conv5_au)
-    # pool6_au = MaxPool2D(pool_size=(2, 2))(pool5_au)
 
     flt = Flatten()(pool4_au)
     dense1 = Dense(256, activation='relu')(flt)
@@ -125,42 +109,26 @@ def build_model():
 
     return model
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     model = build_model()
     model.summary()
-
     name, audio_dict = get_data_and_label()
     train_data = np.load("train_data.npy")
     train_label = np.load("train_label.npy")
-    #
-    # c = list(zip(train_data, train_label))
-    # shuffle(c)
-    # data, label = zip(*c)
-    # train_data = np.array(data)
-    # train_label = np.array(label)
-    #
+
     if os.path.isfile(model.name):
         model.load_weights(model.name)
         print("Load weights successfully")
     else:
         print("No "+model.name)
 
-    # for i in range(10000):
-    #     model.fit(np.array(train_data), np.array(train_label),batch_size=4, nb_epoch=10, shuffle=True, verbose=1)
-    #     model.save("baseline_model.h5")
+    for i in range(10000):
+        model.fit(np.array(train_data), np.array(train_label),batch_size=4, nb_epoch=10, shuffle=True, verbose=1)
+        model.save("baseline_model.h5")
 
     test_data = np.load("test_data.npy")
     test_label = np.load("test_label.npy")
 
-    # aaa = np.load()
-    #
     score = model.evaluate(test_data,test_label,batch_size=4)
     print(score[0], score[1])
-
-    # mat = sio.loadmat("C:\\PR_project\\split_data_speech\\savemat\\5.mat")['MFSC']
-    # print(audio_dict["5"])
-    # mat = mat[:, :, :, 0]
-    # mat = np.expand_dims(mat,axis=0)
-    # pre = model.predict(mat,batch_size=1)
-    # print(np.argmax(pre))

@@ -1,3 +1,5 @@
+# Pattern Recognition final project Group 8 Kaixiang Huang
+# cycle_GAN util
 import os
 import numpy as np
 from scipy.misc import imsave, imread, imresize

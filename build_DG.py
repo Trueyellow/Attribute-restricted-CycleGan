@@ -1,3 +1,6 @@
+# Pattern Recognition final project Group 8 Kaixiang Huang
+# cycleGAN generator and discriminator building
+
 from keras.layers import Activation, Input, Dropout
 from keras.layers import LeakyReLU
 from keras.models import Model, Sequential
@@ -232,7 +235,6 @@ def face_loss_model():
 
 
 def face_loss_model_sgm():
-
     model = Sequential()
     model.add(Conv2D(64, kernel_size=(7, 7), strides=(2, 2),
                                      activation='relu', padding='same', input_shape=(128, 128, 3), name='conv1'))
