@@ -1,1 +1,1 @@
-##Pattern Recognition Course Project##
+#Pattern Recognition Course Project#
